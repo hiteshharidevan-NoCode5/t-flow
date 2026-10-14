@@ -51,12 +51,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
 
-  Future<void> _pickDocument() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['epub', 'pdf'],
-    );
-
+Future<void> _pickDocument() async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['epub', 'pdf'],
+      );
+    } catch (e) {
+      debugPrint('Error picking file: $e');
+    }
     if (result != null && result.files.single.path != null) {
       final path = result.files.single.path!;
       final isEpub = path.toLowerCase().endsWith('.epub');
