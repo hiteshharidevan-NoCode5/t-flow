@@ -435,10 +435,11 @@ body: widget.isPdf
               ? const Center(child: CircularProgressIndicator())
               : _forceReflowPdf
                   ? _buildReflowTextView(_extractedPdfText)
-                  : ColoredBox(
+		  : ColoredBox(
                       color: Colors.grey.shade900,
                       child: px.PdfViewPinch(
                         controller: _pdfPinchController!,
+                        scrollDirection: Axis.vertical,
                         onDocumentLoaded: (doc) {
                           setState(() {
                             _totalPdfPages = doc.pagesCount;
@@ -449,6 +450,21 @@ body: widget.isPdf
                             _currentPdfPage = page;
                           });
                         },
+                        builders: px.PdfViewPinchBuilders<px.DefaultBuilderOptions>(
+                          options: const px.DefaultBuilderOptions(),
+                          documentLoaderBuilder: (_) => const Center(
+                            child: CircularProgressIndicator(color: Colors.white),
+                          ),
+                          pageLoaderBuilder: (_) => const Center(
+                            child: CircularProgressIndicator(color: Colors.white),
+                          ),
+                          errorBuilder: (_, error) => Center(
+                            child: Text(
+                              'Error loading PDF: $error',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ),
                       ),
                     ))
           : _buildEpubReflowView(),
@@ -467,12 +483,15 @@ body: widget.isPdf
                         max: _totalPdfPages.toDouble(),
                         divisions: _totalPdfPages > 1 ? _totalPdfPages - 1 : 1,
                         label: '$_currentPdfPage',
-                        onChanged: (val) {
-                          final target = val.round();
-                          if (target != _currentPdfPage) {
-			_pdfPinchController?.jumpToPage(target);                           
-                          }
-                        },
+			onChanged: (val) {
+  			  final target = val.round();
+  			  if (target != _currentPdfPage) {
+    			    setState(() {
+     			      _currentPdfPage = target;
+			    });
+			    _pdfPinchController?.jumpToPage(target);
+			  }
+			},
                       ),
                     ),
                     Text('$_totalPdfPages', style: const TextStyle(fontSize: 12)),
