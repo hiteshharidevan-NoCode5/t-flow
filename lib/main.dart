@@ -231,6 +231,8 @@ class _UnifiedDocumentReaderState extends State<UnifiedDocumentReader> {
   bool _isExtractingText = false;
   String _extractedPdfText = '';
   px.PdfControllerPinch? _pdfPinchController;
+int _currentPdfPage = 1;
+  int _totalPdfPages = 1;
 
   int _currentEpubChapter = 0;
   List<epub.EpubChapter> _chapters = [];
@@ -309,13 +311,72 @@ class _UnifiedDocumentReaderState extends State<UnifiedDocumentReader> {
     super.dispose();
   }
 
+Future<void> _showJumpToPageDialog() async {
+    final textController = TextEditingController(text: '$_currentPdfPage');
+    final selectedPage = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Go to Page'),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Page number (1 - $_totalPdfPages)',
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final page = int.tryParse(textController.text.trim());
+              if (page != null && page >= 1 && page <= _totalPdfPages) {
+                Navigator.pop(ctx, page);
+              }
+            },
+            child: const Text('Go'),
+          ),
+        ],
+      ),
+    );
+
+    if (selectedPage != null && _pdfPinchController != null) {
+      _pdfPinchController!.animateToPage(
+        pageNumber: selectedPage,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = widget.filePath.split('/').last;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title, style: const TextStyle(fontSize: 16)),
+        title: InkWell(
+          onTap: (widget.isPdf && !_forceReflowPdf && _totalPdfPages > 1)
+              ? _showJumpToPageDialog
+              : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 15), overflow: TextOverflow.ellipsis),
+              if (widget.isPdf && !_forceReflowPdf)
+                Text(
+                  'Page $_currentPdfPage of $_totalPdfPages  •  Tap to jump',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                ),
+            ],
+          ),
+        ),
+
         actions: [
           IconButton(
             icon: Icon(_isSpeaking ? Icons.stop_circle : Icons.volume_up),
@@ -373,9 +434,53 @@ class _UnifiedDocumentReaderState extends State<UnifiedDocumentReader> {
               ? const Center(child: CircularProgressIndicator())
               : _forceReflowPdf
                   ? _buildReflowTextView(_extractedPdfText)
-                  : px.PdfViewPinch(controller: _pdfPinchController!))
-          : _buildEpubReflowView(),
-    );
+                  : px.PdfViewPinch(
+                      controller: _pdfPinchController!,
+                      onDocumentLoaded: (doc) {
+                        setState(() {
+                          _totalPdfPages = doc.pagesCount;
+                        });
+                      },
+                      onPageChanged: (page) {
+                        setState(() {
+                          _currentPdfPage = page;
+                        });
+                      },
+                    ))          : _buildEpubReflowView(),
+bottomNavigationBar: (widget.isPdf && !_forceReflowPdf && _totalPdfPages > 1)
+          ? Container(
+              color: Theme.of(context).colorScheme.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Text('$_currentPdfPage', style: const TextStyle(fontSize: 12)),
+                    Expanded(
+                      child: Slider(
+                        value: _currentPdfPage.toDouble().clamp(1.0, _totalPdfPages.toDouble()),
+                        min: 1.0,
+                        max: _totalPdfPages.toDouble(),
+                        divisions: _totalPdfPages > 1 ? _totalPdfPages - 1 : 1,
+                        label: '$_currentPdfPage',
+                        onChanged: (val) {
+                          final target = val.round();
+                          if (target != _currentPdfPage) {
+                            _pdfPinchController?.animateToPage(
+                              pageNumber: target,
+                              duration: const Duration(milliseconds: 100),
+                              curve: Curves.easeOut,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    Text('$_totalPdfPages', style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+            )
+          : null,    
+);
   }
 
   Widget _buildReflowTextView(String text) {
