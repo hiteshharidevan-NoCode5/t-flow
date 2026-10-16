@@ -437,31 +437,33 @@ body: widget.isPdf
                   ? _buildReflowTextView(_extractedPdfText)
 		  : ColoredBox(
                       color: Colors.grey.shade900,
-                      child: px.PdfViewPinch(
-                        controller: _pdfPinchController!,
-                        scrollDirection: Axis.vertical,
-                        onDocumentLoaded: (doc) {
-                          setState(() {
-                            _totalPdfPages = doc.pagesCount;
-                          });
-                        },
-                        onPageChanged: (page) {
-                          setState(() {
-                            _currentPdfPage = page;
-                          });
-                        },
-                        builders: px.PdfViewPinchBuilders<px.DefaultBuilderOptions>(
-                          options: const px.DefaultBuilderOptions(),
-                          documentLoaderBuilder: (_) => const Center(
-                            child: CircularProgressIndicator(color: Colors.white),
-                          ),
-                          pageLoaderBuilder: (_) => const Center(
-                            child: CircularProgressIndicator(color: Colors.white),
-                          ),
-                          errorBuilder: (_, error) => Center(
-                            child: Text(
-                              'Error loading PDF: $error',
-                              style: const TextStyle(color: Colors.white),
+                      child: SizedBox.expand(
+                        child: px.PdfViewPinch(
+                          controller: _pdfPinchController!,
+                          scrollDirection: Axis.vertical,
+                          onDocumentLoaded: (doc) {
+                            setState(() {
+                              _totalPdfPages = doc.pagesCount;
+                            });
+                          },
+                          onPageChanged: (page) {
+                            setState(() {
+                              _currentPdfPage = page;
+                            });
+                          },
+                          builders: px.PdfViewPinchBuilders<px.DefaultBuilderOptions>(
+                            options: const px.DefaultBuilderOptions(),
+                            documentLoaderBuilder: (_) => const Center(
+                              child: CircularProgressIndicator(color: Colors.white),
+                            ),
+                            pageLoaderBuilder: (_) => const Center(
+                              child: CircularProgressIndicator(color: Colors.white),
+                            ),
+                            errorBuilder: (_, error) => Center(
+                              child: Text(
+                                'Error loading PDF: $error',
+                                style: const TextStyle(color: Colors.white),
+                              ),
                             ),
                           ),
                         ),
