@@ -429,28 +429,33 @@ Future<void> _showJumpToPageDialog() async {
               ),
             )
           : null,
-      body: widget.isPdf
+
+body: widget.isPdf
           ? (_isExtractingText
               ? const Center(child: CircularProgressIndicator())
               : _forceReflowPdf
                   ? _buildReflowTextView(_extractedPdfText)
-                  : px.PdfViewPinch(
-                      controller: _pdfPinchController!,
-                      onDocumentLoaded: (doc) {
-                        setState(() {
-                          _totalPdfPages = doc.pagesCount;
-                        });
-                      },
-                      onPageChanged: (page) {
-                        setState(() {
-                          _currentPdfPage = page;
-                        });
-                      },
-                    ))          : _buildEpubReflowView(),
-bottomNavigationBar: (widget.isPdf && !_forceReflowPdf && _totalPdfPages > 1)
+                  : ColoredBox(
+                      color: Colors.grey.shade900,
+                      child: px.PdfViewPinch(
+                        controller: _pdfPinchController!,
+                        onDocumentLoaded: (doc) {
+                          setState(() {
+                            _totalPdfPages = doc.pagesCount;
+                          });
+                        },
+                        onPageChanged: (page) {
+                          setState(() {
+                            _currentPdfPage = page;
+                          });
+                        },
+                      ),
+                    ))
+          : _buildEpubReflowView(),
+      bottomNavigationBar: (widget.isPdf && !_forceReflowPdf && _totalPdfPages > 1)
           ? Container(
               color: Theme.of(context).colorScheme.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SafeArea(
                 child: Row(
                   children: [
@@ -465,11 +470,7 @@ bottomNavigationBar: (widget.isPdf && !_forceReflowPdf && _totalPdfPages > 1)
                         onChanged: (val) {
                           final target = val.round();
                           if (target != _currentPdfPage) {
-                            _pdfPinchController?.animateToPage(
-                              pageNumber: target,
-                              duration: const Duration(milliseconds: 100),
-                              curve: Curves.easeOut,
-                            );
+			_pdfPinchController?.jumpToPage(target);                           
                           }
                         },
                       ),
@@ -479,7 +480,7 @@ bottomNavigationBar: (widget.isPdf && !_forceReflowPdf && _totalPdfPages > 1)
                 ),
               ),
             )
-          : null,    
+          : null,
 );
   }
 
