@@ -9,6 +9,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:pdfx/pdfx.dart' as px;
 import 'package:syncfusion_flutter_pdf/pdf.dart' as spdf;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:uri_to_file/uri_to_file.dart';
 
 void main() {
   runApp(const TFlowApp());
@@ -87,23 +88,14 @@ late final AppLinks _appLinks;
     );
   }
 
-  Future<void> _handleIncomingUri(Uri uri) async {
+Future<void> _handleIncomingUri(Uri uri) async {
     setState(() => _isLoading = true);
     try {
       String localFilePath;
 
       if (uri.scheme == 'content') {
-        final tempDir = await getTemporaryDirectory();
-        final fileName = uri.pathSegments.isNotEmpty 
-            ? uri.pathSegments.last 
-            : 'opened_document.pdf';
-        final cleanFileName = fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
-        final cachedFile = File('${tempDir.path}/$cleanFileName');
-
-        final sourceFile = File.fromUri(uri);
-        final bytes = await sourceFile.readAsBytes();
-        await cachedFile.writeAsBytes(bytes, flush: true);
-        localFilePath = cachedFile.path;
+        final file = await toFile(uri.toString());
+        localFilePath = file.path;
       } else {
         localFilePath = uri.toFilePath();
       }
