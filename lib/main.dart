@@ -9,7 +9,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:pdfx/pdfx.dart' as px;
 import 'package:syncfusion_flutter_pdf/pdf.dart' as spdf;
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:uri_to_file/uri_to_file.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const TFlowApp());
@@ -88,14 +88,23 @@ late final AppLinks _appLinks;
     );
   }
 
-Future<void> _handleIncomingUri(Uri uri) async {
+static const _contentChannel = MethodChannel('com.reader.tflow.t_flow/content_resolver');
+
+  Future<void> _handleIncomingUri(Uri uri) async {
     setState(() => _isLoading = true);
     try {
       String localFilePath;
 
       if (uri.scheme == 'content') {
-        final file = await toFile(uri.toString());
-        localFilePath = file.path;
+        final String? resolvedPath = await _contentChannel.invokeMethod<String>(
+          'getFilePathFromContentUri',
+          {'uri': uri.toString()},
+        );
+
+        if (resolvedPath == null) {
+          throw Exception("Could not resolve content URI");
+        }
+        localFilePath = resolvedPath;
       } else {
         localFilePath = uri.toFilePath();
       }
