@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'package:app_links/app_links.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -50,6 +53,82 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
+
+late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initIncomingLinks();
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initIncomingLinks() async {
+    _appLinks = AppLinks();
+
+    try {
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) {
+        _handleIncomingUri(initialUri);
+      }
+    } catch (e) {
+      debugPrint('Error getting initial link: $e');
+    }
+
+    _linkSubscription = _appLinks.uriLinkStream.listen(
+      (uri) => _handleIncomingUri(uri),
+      onError: (err) => debugPrint('Error in uriLinkStream: $err'),
+    );
+  }
+
+  Future<void> _handleIncomingUri(Uri uri) async {
+    setState(() => _isLoading = true);
+    try {
+      String localFilePath;
+
+      if (uri.scheme == 'content') {
+        final tempDir = await getTemporaryDirectory();
+        final fileName = uri.pathSegments.isNotEmpty 
+            ? uri.pathSegments.last 
+            : 'opened_document.pdf';
+        final cleanFileName = fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
+        final cachedFile = File('${tempDir.path}/$cleanFileName');
+
+        final sourceFile = File.fromUri(uri);
+        final bytes = await sourceFile.readAsBytes();
+        await cachedFile.writeAsBytes(bytes, flush: true);
+        localFilePath = cachedFile.path;
+      } else {
+        localFilePath = uri.toFilePath();
+      }
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      final isEpub = localFilePath.toLowerCase().endsWith('.epub');
+      if (isEpub) {
+        _loadEpub(localFilePath);
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => UnifiedDocumentReader(filePath: localFilePath, isPdf: true),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error processing incoming document URI: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
 Future<void> _pickDocument() async {
     FilePickerResult? result;
